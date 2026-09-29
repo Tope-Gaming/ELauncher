@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELauncher - Eaglercraft</title>
+
+    <!-- Favicon & PWA Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+    <link rel="shortcut icon" href="assets/favicon.ico">
+
+    <!-- PWA Manifest & Theme Color -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2b8ce6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ELauncher">
+
+    <!-- Compiled Local Tailwind -->
+    <link rel="stylesheet" href="static/tailwind.css">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        launcher: {
+                            green: '#78a239', yellow: '#f3c53e', yellowHover: '#e3b632',
+                            yellowShadow: '#cda32b', blueHeading: '#007cc3',
+                            greenHeading: '#339933', sidebarBase: '#2a4c78',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+        .game-bg {
+            background-color: #1a1a1a;
+            background-image:
+                linear-gradient(to bottom, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.5)),
+                url('assets/wallpaper.png');
+            background-size: cover;
+            background-position: center;
+        }
+        
+        #el-mods-btn img { height: 40px !important; width: auto !important; }
+
+        /* ---------- FIX FOR SCROLLABLE DROPDOWN ---------- */
+        .dropdown-menu {
+            max-height: 250px;
+            overflow-y: auto !important;
+            overflow-x: hidden;
+        }
+
+        /* ---------- POPUPS (Shared styles for PWA & Offline) ---------- */
+        .pwa-popup-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+            display: none; align-items: center; justify-content: center;
+            z-index: 9999; animation: fadeIn 0.3s ease;
+        }
+        .pwa-popup-overlay.show { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .pwa-popup {
+            background: white; border-radius: 12px; width: 420px; max-width: 90vw;
+            overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes slideUp {
+            from { transform: translateY(40px) scale(0.95); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        .pwa-popup-header {
+            background: linear-gradient(135deg, #2b8ce6, #1c6fb5);
+            color: white; padding: 24px; text-align: center; position: relative;
+        }
+        .pwa-popup-header i { font-size: 50px; margin-bottom: 12px; display: block; }
+        .pwa-popup-header h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+        .pwa-popup-header p { font-size: 13px; color: rgba(255,255,255,0.85); line-height: 1.5; }
+        .pwa-close-x {
+            position: absolute; top: 12px; right: 16px; background: none; border: none;
+            color: white; font-size: 20px; cursor: pointer; opacity: 0.7; transition: 0.2s;
+        }
+        .pwa-close-x:hover { opacity: 1; transform: rotate(90deg); }
+
+        .pwa-popup-body { padding: 24px; }
+        .pwa-popup-body p { font-size: 14px; color: #555; line-height: 1.6; margin-bottom: 12px; }
+        .pwa-feature-list { list-style: none; padding: 0; margin: 16px 0; }
+        .pwa-feature-list li {
+            font-size: 13px; color: #444; padding: 6px 0;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .pwa-feature-list li i { color: #78a239; font-size: 14px; }
+
+        .pwa-popup-footer { padding: 0 24px 24px; display: flex; gap: 10px; }
+        .pwa-install-btn {
+            flex: 1; background: linear-gradient(to bottom, #f3c53e, #e3b632);
+            color: #5a4400; border: none; padding: 14px; border-radius: 6px;
+            font-size: 15px; font-weight: 800; cursor: pointer; transition: 0.15s;
+            box-shadow: 0 3px 0 #cda32b; font-family: 'Inter', sans-serif;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .pwa-install-btn:hover { filter: brightness(1.05); }
+        .pwa-install-btn:active { transform: translateY(3px); box-shadow: 0 0 0 #cda32b; }
+
+        .pwa-later-btn {
+            background: transparent; color: #888; border: 1px solid #ddd;
+            padding: 14px 20px; border-radius: 6px; font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: 0.2s; font-family: 'Inter', sans-serif;
+        }
+        .pwa-later-btn:hover { background: #f5f5f5; color: #555; }
+
+        /* ---------- Toast for SW updates ---------- */
+        .sw-update-toast {
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+            background: #1c6fb5; color: white; padding: 12px 20px; border-radius: 6px;
+            font-size: 13px; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            display: none; align-items: center; gap: 12px; z-index: 9998;
+        }
+        .sw-update-toast.show { display: flex; }
+        .sw-update-toast button {
+            background: #f3c53e; color: #5a4400; border: none; padding: 6px 14px;
+            border-radius: 4px; font-weight: 800; cursor: pointer; font-size: 12px;
+        }
+    </style>
+</head>
+
+<body class="h-screen w-screen overflow-hidden flex flex-col m-0 p-0 font-sans bg-gray-900 text-gray-800">
+
+    <!-- PWA INSTALL POPUP -->
+    <div class="pwa-popup-overlay" id="pwaInstallPopup">
+        <div class="pwa-popup">
+            <div class="pwa-popup-header">
+                <button class="pwa-close-x" id="pwaCloseX">&times;</button>
+                <i class="fa-solid fa-download"></i>
+                <h2>Install ELauncher</h2>
+                <p>Get the full app experience on your device</p>
+            </div>
+            <div class="pwa-popup-body">
+                <p>Install ELauncher as a desktop app and it will appear in your <b>Chromebook launcher</b> for quick access!</p>
+                <ul class="pwa-feature-list">
+                    <li><i class="fa-solid fa-check-circle"></i> Launch directly from your app drawer</li>
+                    <li><i class="fa-solid fa-check-circle"></i> Works offline with cached games</li>
+                    <li><i class="fa-solid fa-check-circle"></i> Opens in its own dedicated window</li>
+                    <li><i class="fa-solid fa-check-circle"></i> Loads faster than the browser version</li>
+                </ul>
+            </div>
+            <div class="pwa-popup-footer">
+                <button class="pwa-later-btn" id="pwaLaterBtn">Not Now</button>
+                <button class="pwa-install-btn" id="pwaInstallBtn">
+                    <i class="fa-solid fa-download"></i> Install App
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OFFLINE DOWNLOAD POPUP -->
+    <div class="pwa-popup-overlay" id="offlinePopup">
+        <div class="pwa-popup">
+            <div class="pwa-popup-header" style="background: linear-gradient(135deg, #78a239, #68902f);">
+                <button class="pwa-close-x" onclick="closeOfflinePopup()">&times;</button>
+                <i class="fa-solid fa-cloud-arrow-down"></i>
+                <h2>Download for Offline Use</h2>
+                <p>Cache this version to play without internet</p>
+            </div>
+            <div class="pwa-popup-body">
+                <p>Would you like to download this version to your device? This will allow you to play offline and load the game faster next time.</p>
+                <ul class="pwa-feature-list">
+                    <li><i class="fa-solid fa-check-circle"></i> Play without internet connection</li>
+                    <li><i class="fa-solid fa-check-circle"></i> Faster loading times</li>
+                    <li><i class="fa-solid fa-check-circle"></i> Saves to your browser cache</li>
+                </ul>
+            </div>
+            <div class="pwa-popup-footer">
+                <button class="pwa-later-btn" onclick="playWithoutCache()">Just Play</button>
+                <button class="pwa-install-btn" style="background: linear-gradient(to bottom, #78a239, #68902f); color: white; box-shadow: 0 3px 0 #4a6b1f;" onclick="downloadAndPlay()" id="offlineDownloadBtn">
+                    <i class="fa-solid fa-download"></i> Download & Play
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SW UPDATE TOAST -->
+    <div class="sw-update-toast" id="swUpdateToast">
+        <i class="fa-solid fa-rotate"></i>
+        <span>A new version of ELauncher is available!</span>
+        <button id="swUpdateBtn">Reload</button>
+    </div>
+
+    <div class="flex-1 game-bg relative flex flex-col h-full w-full">
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex p-5 gap-5 relative z-10 overflow-hidden w-full mx-auto">
+            <div class="flex-1 bg-white/95 backdrop-blur-sm shadow-2xl overflow-y-auto rounded-sm border border-black/10">
+                <div class="p-8 pb-12">
+                    <h2 class="text-launcher-greenHeading text-[20px] font-bold mb-2">Be sure to join our Discord!</h2>
+                    <p class="text-[13px] text-gray-700 mb-6">
+                        Stay up to date with the latest news, updates, and community events: <a href="#" class="text-orange-500 font-semibold hover:underline">discord.gg/elauncher</a> :)
+                    </p>
+
+                    <h2 class="text-launcher-blueHeading text-[22px] font-bold mb-2 tracking-tight">Eaglercraft updates are rolling out!</h2>
+                    <p class="text-[13px] text-gray-800 leading-relaxed mb-6">
+                        If you encounter an error when launching the latest beta versions, make sure you have the newest web client files. You can configure your launch settings using the bottom panel.
+                    </p>
+
+                    <div class="flex justify-between items-baseline mb-3">
+                        <h2 class="text-launcher-blueHeading text-[22px] font-bold tracking-tight">Release Notes</h2>
+                        <span class="text-gray-500 text-[12px]">Last updated: Today</span>
+                    </div>
+
+                    <h3 class="font-bold text-gray-900 text-[15px] mb-2 mt-5">Launcher Update v4.0</h3>
+                    <div class="text-[13px] text-gray-800 leading-relaxed space-y-3 mb-6">
+                        <p>- Added real <b>offline caching</b> via Service Worker.</p>
+                        <p>- Clicking "Download & Play" now actually caches all game files (.html, .js, .wasm) for offline use.</p>
+                        <p>- Fixed the scrollable dropdown menu.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar -->
+            <div class="w-[250px] bg-launcher-sidebarBase/90 backdrop-blur-md rounded-sm shadow-2xl p-3 flex flex-col border border-white/10 shrink-0">
+                <div class="text-center mb-5 mt-2">
+                    <h1 class="text-white text-[28px] font-extrabold tracking-wider leading-none drop-shadow-md">ELAUNCHER</h1>
+                    <p class="text-blue-200/80 text-[9px] tracking-[0.25em] font-semibold mt-1.5">LAUNCHER FOR EAGLERCRAFT</p>
+                </div>
+
+                <div class="flex flex-col gap-1 mb-5">
+                    <button class="bg-white/10 hover:bg-white/20 border border-white/5 transition-colors h-9 w-full flex items-center text-white overflow-hidden shadow-sm">
+                        <div class="w-10 h-full flex items-center justify-center border-r border-white/10 bg-black/10"><i class="fa-solid fa-question text-[13px] opacity-80"></i></div>
+                        <div class="flex-1 text-left pl-3 text-[12px] font-bold tracking-wide text-gray-100">HELP</div>
+                    </button>
+                    <button id="sidebar-install-pwa" class="bg-white/10 hover:bg-white/20 border border-white/5 transition-colors h-9 w-full flex items-center text-white overflow-hidden shadow-sm">
+                        <div class="w-10 h-full flex items-center justify-center border-r border-white/10 bg-black/10"><i class="fa-solid fa-download text-[13px] opacity-80"></i></div>
+                        <div class="flex-1 text-left pl-3 text-[12px] font-bold tracking-wide text-gray-100">INSTALL PWA</div>
+                    </button>
+                    <button class="bg-white/10 hover:bg-white/20 border border-white/5 transition-colors h-9 w-full flex items-center text-white overflow-hidden shadow-sm">
+                        <div class="w-10 h-full flex items-center justify-center border-r border-white/10 bg-black/10"><i class="fa-solid fa-play text-[13px] opacity-80"></i></div>
+                        <div class="flex-1 text-left pl-3 text-[12px] font-bold tracking-wide text-gray-100">GETTING STARTED</div>
+                    </button>
+                </div>
+
+                <div class="mt-auto">
+                    <div class="bg-[#18191c] h-24 rounded-sm relative overflow-hidden flex flex-col justify-center px-4 cursor-pointer shadow-lg group border border-[#2d2f33] hover:border-[#5865F2] transition-colors">
+                        <div class="z-10 flex flex-col">
+                            <span class="text-white font-bold text-lg leading-tight flex items-center gap-1.5 mb-1"><i class="fa-brands fa-discord text-[#5865F2]"></i> Discord</span>
+                            <span class="text-[#f3c53e] font-black text-[19px] leading-none tracking-wide group-hover:text-white transition-colors">JOIN US!</span>
+                        </div>
+                        <div class="absolute right-[-10px] bottom-[-15px] text-[#5865F2] opacity-30 group-hover:opacity-60 group-hover:scale-110 transition-all duration-300"><i class="fa-brands fa-discord text-[80px]"></i></div>
+                        <div class="absolute inset-0 bg-gradient-to-r from-[#18191c] via-[#18191c]/80 to-transparent pointer-events-none"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Action Bar -->
+        <div class="bg-launcher-green h-[80px] w-full z-20 flex items-center justify-between px-6 shadow-[0_-5px_25px_rgba(0,0,0,0.4)] shrink-0">
+            <div class="flex items-center gap-4">
+                <div class="relative custom-dropdown" data-id="version">
+                    <div class="dropdown-toggle bg-white hover:bg-gray-50 text-gray-800 text-[14px] font-bold h-11 w-[240px] px-4 shadow-[0_3px_0_rgba(0,0,0,0.15)] active:shadow-none active:translate-y-[3px] transition-all rounded-sm flex items-center justify-between cursor-pointer border border-black/10 select-none">
+                        <div class="flex items-center gap-2 pointer-events-none">
+                            <div class="icon-container flex items-center justify-center w-5">
+                                <i class="icon-element fa-solid fa-cube text-[#007cc3] text-[16px]"></i>
+                            </div>
+                            <span class="dropdown-label tracking-wide">Loading...</span>
+                        </div>
+                        <i class="fa-solid fa-caret-down text-gray-400 pointer-events-none"></i>
+                    </div>
+                    <div class="dropdown-menu absolute bottom-[calc(100%+6px)] left-0 w-full bg-white border border-black/10 rounded-sm shadow-xl hidden flex-col z-50 origin-bottom select-none"></div>
+                </div>
+
+                <div class="relative custom-dropdown" data-id="type">
+                    <div class="dropdown-toggle bg-white hover:bg-gray-50 text-gray-800 text-[14px] font-bold h-11 w-[130px] px-4 shadow-[0_3px_0_rgba(0,0,0,0.15)] active:shadow-none active:translate-y-[3px] transition-all rounded-sm flex items-center justify-between cursor-pointer border border-black/10 select-none">
+                        <div class="flex items-center gap-2 pointer-events-none">
+                            <div class="icon-container flex items-center justify-center w-5">
+                                <img src="assets/webassembly.svg" alt="icon" onerror="this.outerHTML='<i class=\'icon-element fa-brands fa-webflow text-purple-600 text-[16px]\'></i>'">
+                            </div>
+                            <span class="dropdown-label tracking-wide">WASM</span>
+                        </div>
+                        <i class="fa-solid fa-caret-down text-gray-400 pointer-events-none"></i>
+                    </div>
+                    <div class="dropdown-menu absolute bottom-[calc(100%+6px)] left-0 w-full bg-white border border-black/10 rounded-sm shadow-xl hidden flex-col z-50 origin-bottom select-none">
+                        <div class="p-3 hover:bg-gray-100 cursor-pointer flex items-center gap-2 transition-colors border-b border-gray-100 dropdown-option">
+                            <div class="flex items-center justify-center w-5 pointer-events-none"><img src="assets/webassembly.svg" alt="icon" class="icon-element" onerror="this.outerHTML='<i class=\'icon-element fa-brands fa-webflow text-purple-600 text-[16px]\'></i>'"></div>
+                            <span class="font-bold text-gray-800 text-[13px] pointer-events-none">WASM</span>
+                        </div>
+                        <div class="p-3 hover:bg-gray-100 cursor-pointer flex items-center gap-2 transition-colors dropdown-option">
+                            <div class="flex items-center justify-center w-5 pointer-events-none"><img src="assets/js.svg" alt="icon" class="icon-element" onerror="this.outerHTML='<i class=\'icon-element fa-brands fa-js text-yellow-500 text-[16px]\'></i>'"></div>
+                            <span class="font-bold text-gray-800 text-[13px] pointer-events-none">JS</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="play-btn" class="ml-2 whitespace-nowrap bg-launcher-yellow hover:bg-launcher-yellowHover text-white text-[18px] font-bold h-11 px-10 shadow-[0_3px_0_var(--tw-shadow-color)] shadow-launcher-yellowShadow active:shadow-none active:translate-y-[3px] transition-all rounded-sm tracking-wide border border-black/5">
+                    Enter the game
+                </button>
+            </div>
+
+            <div class="flex items-center gap-6 text-white/90 mr-2">
+                <button id="el-mods-btn" class="hover:scale-110 transition-all duration-200 flex items-center justify-center">
+                    <img src="assets/el_mods/button.png" alt="EL Mods" style="height: 40px; width: auto;" class="object-contain drop-shadow-md" onerror="this.outerHTML='<span class=\'text-white font-bold text-sm bg-black/30 px-3 py-1 rounded\'>EL Mods</span>'">
+                </button>
+                <button class="hover:text-white hover:scale-110 transition-all duration-200">
+                    <i class="fa-solid fa-gear text-[26px] drop-shadow-md"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // GLOBAL VARIABLES
+        // ============================================================
+        let selectedTargetUrl = null;
+        let deferredPrompt = null;
+
+        // ============================================================
+        // SERVICE WORKER
+        // ============================================================
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((registration) => {
+                        console.log('[ELauncher] SW registered:', registration.scope);
+                        setInterval(() => registration.update(), 60 * 60 * 1000);
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    document.getElementById('swUpdateToast').classList.add('show');
+                                }
+                            });
+                        });
+                    })
+                    .catch((err) => console.warn('[ELauncher] SW failed:', err));
+
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (!refreshing) { refreshing = true; window.location.reload(); }
+                });
+            });
+        }
+
+        // ============================================================
+        // PWA INSTALL LOGIC
+        // ============================================================
+        const installPopup = document.getElementById('pwaInstallPopup');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const dismissedAt = localStorage.getItem('pwa_dismissed_at');
+            const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+            if (!dismissedAt || parseInt(dismissedAt) < oneDayAgo) {
+                setTimeout(() => { installPopup.classList.add('show'); }, 3000);
+            }
+        });
+
+        document.getElementById('pwaInstallBtn').addEventListener('click', async () => {
+            if (!deferredPrompt) { alert('Install is not available right now.'); return; }
+            installPopup.classList.remove('show');
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+        });
+
+        document.getElementById('pwaLaterBtn').addEventListener('click', () => {
+            installPopup.classList.remove('show');
+            localStorage.setItem('pwa_dismissed_at', Date.now().toString());
+        });
+
+        document.getElementById('pwaCloseX').addEventListener('click', () => {
+            installPopup.classList.remove('show');
+            localStorage.setItem('pwa_dismissed_at', Date.now().toString());
+        });
+
+        document.getElementById('sidebar-install-pwa').addEventListener('click', () => {
+            if (deferredPrompt) { installPopup.classList.add('show'); }
+            else if (window.matchMedia('(display-mode: standalone)').matches) { alert('ELauncher is already installed!'); }
+            else { alert('Install not available. Try browser menu (⋮ → Install ELauncher).'); }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            installPopup.classList.remove('show');
+            deferredPrompt = null;
+            alert('ELauncher has been installed! Check your app launcher.');
+        });
+
+        document.getElementById('swUpdateBtn').addEventListener('click', () => {
+            if (navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+            }
+        });
+
+        // ============================================================
+        // OFFLINE POPUP LOGIC
+        // ============================================================
+        function closeOfflinePopup() {
+            document.getElementById('offlinePopup').classList.remove('show');
+        }
+
+        function playWithoutCache() {
+            closeOfflinePopup();
+            if (selectedTargetUrl) window.location.href = selectedTargetUrl;
+        }
+
+        function downloadAndPlay() {
+            const btn = document.getElementById('offlineDownloadBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Caching...';
+            btn.style.pointerEvents = 'none';
+
+            // Check if Service Worker is available
+            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                // Set up the listener BEFORE sending the message
+                let messageHandled = false;
+
+                function onSWMessage(event) {
+                    if (messageHandled) return;
+                    if (!event.data) return;
+
+                    if (event.data.type === 'CACHE_COMPLETE') {
+                        messageHandled = true;
+                        navigator.serviceWorker.removeEventListener('message', onSWMessage);
+                        alert("✅ Version cached successfully! You can now play offline.");
+                        closeOfflinePopup();
+                        if (selectedTargetUrl) window.location.href = selectedTargetUrl;
+                        btn.innerHTML = originalText;
+                        btn.style.pointerEvents = 'auto';
+                    } else if (event.data.type === 'CACHE_FAILED') {
+                        messageHandled = true;
+                        navigator.serviceWorker.removeEventListener('message', onSWMessage);
+                        alert("❌ Failed to cache. Playing online instead...");
+                        closeOfflinePopup();
+                        if (selectedTargetUrl) window.location.href = selectedTargetUrl;
+                        btn.innerHTML = originalText;
+                        btn.style.pointerEvents = 'auto';
+                    }
+                }
+
+                navigator.serviceWorker.addEventListener('message', onSWMessage);
+
+                // Send the caching request to the Service Worker
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'CACHE_GAME',
+                    url: selectedTargetUrl
+                });
+
+                // Safety timeout: if no response after 30 seconds, just play anyway
+                setTimeout(() => {
+                    if (!messageHandled) {
+                        messageHandled = true;
+                        navigator.serviceWorker.removeEventListener('message', onSWMessage);
+                        alert("⏱️ Caching is taking longer than expected. Playing online now...");
+                        closeOfflinePopup();
+                        if (selectedTargetUrl) window.location.href = selectedTargetUrl;
+                        btn.innerHTML = originalText;
+                        btn.style.pointerEvents = 'auto';
+                    }
+                }, 30000);
+
+            } else {
+                // Fallback if Service Worker isn't ready
+                alert("⚠️ Service Worker not ready yet. Playing online...");
+                closeOfflinePopup();
+                if (selectedTargetUrl) window.location.href = selectedTargetUrl;
+                btn.innerHTML = originalText;
+                btn.style.pointerEvents = 'auto';
+            }
+        }
+
+        // ============================================================
+        // LAUNCHER DATA & SORTING
+        // ============================================================
+        let versionsMap = [];
+
+        const VERSION_PRIORITY = [
+            'pre-classic-rd-131655', 'pre-classic-rd-132211', 'pre-classic-rd-132328', 'pre-classic-rd-160052', 'pre-classic-rd-161348',
+            'classic-0.0.11a', 'classic-0.0.12a_03', 'classic-0.0.13a_03', 'classic-0.0.14a_08', 'classic-0.0.15a', 'classic-0.0.16a_02',
+            'classic-0.0.17a', 'classic-0.0.18a_02', 'classic-0.0.19a_06', 'classic-0.0.20a_02', 'classic-0.0.21a', 'classic-0.0.22a_05',
+            'classic-0.0.23a_01', 'classic-0.0.24a_03', 'classic-0.0.25a_05', 'classic-0.3.0',
+            'indev', 'indev-20100219', 'indev-20100223', 'infdev',
+            'alpha-1.0.1_01', 'alpha-1.0.4', 'alpha-1.0.6_03', 'alpha-1.0.16_02', 'alpha-1.1.2_01', 'alpha-1.2.6',
+            'beta-1.0', 'beta-1.0.2', 'beta-1.1', 'beta-1.2', 'beta-1.3', 'beta-1.4', 'beta-1.5', 'beta-1.6.4', 'beta-1.7.3', 'beta-1.8.1', 'beta-1.9',
+            '1.0', '1.1', '1.2.3', '1.2.5', '1.3.2', '1.4.7', '1.5.2', '1.6.4', '1.7.10', '1.8.8', '1.12.2', '1.13.2', '1.14.4', '1.15', '1.16.5', '1.17.1', '1.20.6', '1.21.11',
+            '26.1.2', '26.2', '4k', 'efi-1.8.8', 'efi-1.12.2'
+        ];
+
+        function parseGameListCSV(text) {
+            const lines = text.split('\n').filter(line => line.trim() !== '');
+            const result = [];
+            lines.forEach(line => {
+                const parts = line.split(',');
+                const name = parts[0].trim();
+                if (name.toLowerCase().includes('client')) return;
+
+                let js = parts[1] ? parts[1].trim() : '0';
+                let wasm = parts[2] ? parts[2].trim() : '0';
+                if (js === '0' || js === '') js = null; else js = js.replace(/\\/g, '/').replace(/^\/+/, '');
+                if (wasm === '0' || wasm === '') wasm = null; else wasm = wasm.replace(/\\/g, '/').replace(/^\/+/, '');
+                if (name) result.push({ name, js, wasm });
+            });
+            return result;
+        }
+
+        async function loadGameList() {
+            try {
+                const res = await fetch('data/game_list.csv');
+                if (res.ok) versionsMap = parseGameListCSV(await res.text());
+            } catch (e) { console.warn("Could not load data/game_list.csv:", e); }
+
+            if (versionsMap.length === 0) {
+                versionsMap = [
+                    { name: '26.2', js: null, wasm: 'game/eaglercraft/26.2-wasm/index.html' },
+                    { name: '1.8.8', js: null, wasm: 'game/eaglercraft/1.8.8-wasm/index.html' },
+                    { name: '4k', js: null, wasm: 'game/eaglercraft/4k/index.html' }
+                ];
+            }
+        }
+
+        function sortVersions() {
+            versionsMap.sort((a, b) => {
+                const indexA = VERSION_PRIORITY.indexOf(a.name.toLowerCase());
+                const indexB = VERSION_PRIORITY.indexOf(b.name.toLowerCase());
+                if (indexA !== -1 && indexB !== -1) return indexB - indexA;
+                if (indexA !== -1) return -1;
+                if (indexB !== -1) return 1;
+                return b.name.localeCompare(a.name);
+            });
+        }
+
+        function renderDropdown() {
+            const menu = document.querySelector('.custom-dropdown[data-id="version"] .dropdown-menu');
+            const label = document.querySelector('.custom-dropdown[data-id="version"] .dropdown-label');
+            const iconContainer = document.querySelector('.custom-dropdown[data-id="version"] .icon-container');
+            menu.innerHTML = '';
+            
+            if (versionsMap.length === 0) { label.innerText = 'No versions found'; return; }
+            label.innerText = versionsMap[0].name;
+
+            versionsMap.forEach((v, index) => {
+                const div = document.createElement('div');
+                div.className = 'p-3 hover:bg-gray-100 cursor-pointer flex items-center gap-2 transition-colors border-b border-gray-100 dropdown-option';
+                if (index === versionsMap.length - 1) div.classList.remove('border-b');
+                
+                let iconColor = 'text-[#007cc3]';
+                if (v.name.toLowerCase().includes('beta')) iconColor = 'text-[#f7941d]';
+                if (v.name.toLowerCase().includes('alpha')) iconColor = 'text-[#e74c3c]';
+                if (v.name.toLowerCase().includes('indev')) iconColor = 'text-[#9b59b6]';
+                if (v.name.toLowerCase().includes('classic') || v.name.toLowerCase().includes('pre-classic')) iconColor = 'text-[#f3c53e]';
+                if (v.name === '4k') iconColor = 'text-[#78a239]';
+                if (v.name.toLowerCase().includes('efi')) iconColor = 'text-[#e67e22]';
+
+                div.innerHTML = `
+                    <div class="flex items-center justify-center w-5 pointer-events-none">
+                        <i class="icon-element fa-solid fa-cube ${iconColor} text-[16px]"></i>
+                    </div>
+                    <span class="font-bold text-gray-800 text-[13px] pointer-events-none">${v.name}</span>
+                `;
+                
+                div.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    label.innerText = v.name;
+                    const icon = div.querySelector('.icon-element');
+                    if (icon) { iconContainer.innerHTML = ''; iconContainer.appendChild(icon.cloneNode(true)); }
+                    menu.classList.add('hidden');
+                    handleVersionRestrictions(v);
+                });
+                menu.appendChild(div);
+            });
+
+            handleVersionRestrictions(versionsMap[0]);
+        }
+
+        function handleVersionRestrictions(v) {
+            const typeDropdown = document.querySelector('.custom-dropdown[data-id="type"]');
+            const typeLabel = typeDropdown.querySelector('.dropdown-label');
+            const typeIconContainer = typeDropdown.querySelector('.icon-container');
+            const typeOptions = typeDropdown.querySelectorAll('.dropdown-option');
+            const hasWasm = !!v.wasm, hasJs = !!v.js;
+
+            typeOptions.forEach(opt => {
+                const isWasm = opt.querySelector('span').innerText.includes('WASM');
+                const isJs = opt.querySelector('span').innerText.includes('JS');
+                if (isWasm) opt.style.display = hasWasm ? '' : 'none';
+                if (isJs) opt.style.display = hasJs ? '' : 'none';
+            });
+
+            const currentType = typeLabel.innerText;
+            if (currentType.includes('WASM') && !hasWasm && hasJs) {
+                typeLabel.innerText = 'JS';
+                const jsOpt = Array.from(typeOptions).find(opt => opt.querySelector('span').innerText.includes('JS'));
+                if (jsOpt) {
+                    const jsIcon = jsOpt.querySelector('.icon-element');
+                    if (jsIcon) { typeIconContainer.innerHTML = ''; typeIconContainer.appendChild(jsIcon.cloneNode(true)); }
+                }
+            } else if (currentType.includes('JS') && !hasJs && hasWasm) {
+                typeLabel.innerText = 'WASM';
+                const wasmOpt = Array.from(typeOptions).find(opt => opt.querySelector('span').innerText.includes('WASM'));
+                if (wasmOpt) {
+                    const wasmIcon = wasmOpt.querySelector('.icon-element');
+                    if (wasmIcon) { typeIconContainer.innerHTML = ''; typeIconContainer.appendChild(wasmIcon.cloneNode(true)); }
+                }
+            }
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadGameList();
+            sortVersions();
+            renderDropdown();
+
+            const dropdowns = document.querySelectorAll('.custom-dropdown');
+            dropdowns.forEach(dropdown => {
+                const toggle = dropdown.querySelector('.dropdown-toggle');
+                const menu = dropdown.querySelector('.dropdown-menu');
+                const options = dropdown.querySelectorAll('.dropdown-option');
+                const label = dropdown.querySelector('.dropdown-label');
+                const iconContainer = dropdown.querySelector('.icon-container');
+
+                toggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdowns.forEach(other => { if (other !== dropdown) other.querySelector('.dropdown-menu').classList.add('hidden'); });
+                    menu.classList.toggle('hidden');
+                });
+
+                if (dropdown.dataset.id === 'type') {
+                    options.forEach(option => {
+                        option.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            label.innerText = option.querySelector('span').innerText;
+                            const icon = option.querySelector('.icon-element');
+                            if (icon) { iconContainer.innerHTML = ''; iconContainer.appendChild(icon.cloneNode(true)); }
+                            menu.classList.add('hidden');
+                        });
+                    });
+                }
+            });
+
+            document.addEventListener('click', () => { dropdowns.forEach(d => d.querySelector('.dropdown-menu').classList.add('hidden')); });
+
+            document.getElementById('el-mods-btn').onclick = () => { window.location.href = 'mods.html'; };
+
+            // PLAY BUTTON LOGIC
+            document.getElementById('play-btn').addEventListener('click', () => {
+                const verLabel = document.querySelector('.custom-dropdown[data-id="version"] .dropdown-label').innerText;
+                const typeLabel = document.querySelector('.custom-dropdown[data-id="type"] .dropdown-label').innerText;
+                const selectedVersion = versionsMap.find(v => v.name === verLabel);
+                
+                if (!selectedVersion) { alert('Please select a valid version.'); return; }
+                
+                const isWasm = typeLabel.includes('WASM');
+                const targetUrl = isWasm ? selectedVersion.wasm : selectedVersion.js;
+                
+                if (!targetUrl) { alert('This combination is not available.'); return; }
+
+                // Save URL globally for the popup buttons to use
+                selectedTargetUrl = targetUrl;
+
+                // Show the Offline Download Popup instead of launching immediately
+                document.getElementById('offlinePopup').classList.add('show');
+            });
+        });
+    </script>
+</body>
+
+</html>

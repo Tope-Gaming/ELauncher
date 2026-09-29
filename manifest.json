@@ -1,0 +1,32 @@
+{
+    "name": "ELauncher — Eaglercraft Edition",
+    "short_name": "ELauncher",
+    "description": "The ultimate launcher for Eaglercraft — play Minecraft in your browser!",
+    "start_url": "./index.html",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#1a1a1a",
+    "theme_color": "#2b8ce6",
+    "icons": [
+        {
+            "src": "assets/favicon-32x32.png",
+            "sizes": "32x32",
+            "type": "image/png"
+        },
+        {
+            "src": "assets/favicon-16x16.png",
+            "sizes": "16x16",
+            "type": "image/png"
+        },
+        {
+            "src": "assets/apple-touch-icon.png",
+            "sizes": "180x180",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": ["games", "entertainment"],
+    "lang": "en-US",
+    "dir": "ltr"
+}
