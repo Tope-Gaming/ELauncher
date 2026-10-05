@@ -2,10 +2,9 @@
    ELauncher Service Worker — Caching & Offline Support
    ============================================================ */
 
-const CACHE_NAME = 'elauncher-cache-v2';
-const RUNTIME_CACHE = 'elauncher-runtime-v2';
+const CACHE_NAME = 'elauncher-cache-v3';
+const RUNTIME_CACHE = 'elauncher-runtime-v3';
 
-// Files that are cached on install (the "core" of the launcher)
 const PRECACHE_URLS = [
     './',
     './index.html',
@@ -24,7 +23,7 @@ const PRECACHE_URLS = [
 
 // Install: Cache core files
 self.addEventListener('install', (event) => {
-    console.log('[SW] Installing ELauncher Service Worker v2...');
+    console.log('[SW] Installing ELauncher Service Worker v3...');
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
@@ -39,7 +38,7 @@ self.addEventListener('install', (event) => {
 
 // Activate: Clean up old caches
 self.addEventListener('activate', (event) => {
-    console.log('[SW] Activating ELauncher Service Worker v2...');
+    console.log('[SW] Activating ELauncher Service Worker v3...');
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
@@ -54,18 +53,25 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch: Cache-first for launcher assets, network-first for game files
+// Fetch: Handle requests safely
 self.addEventListener('fetch', (event) => {
     const request = event.request;
-    const url = new URL(request.url);
 
-    // Skip non-GET requests
+    // 1. Skip non-GET requests
     if (request.method !== 'GET') return;
 
-    // Skip external requests (relays, websockets, etc.)
+    // 2. Skip empty or invalid URLs (THIS FIXES YOUR ERROR)
+    if (!request.url || request.url === '' || request.url === 'about:blank') return;
+
+    // 3. Skip non-HTTP requests
+    if (!request.url.startsWith('http')) return;
+
+    const url = new URL(request.url);
+
+    // 4. Skip external requests (relays, websockets, etc.)
     if (url.origin !== self.location.origin) return;
 
-    // Skip websocket-related requests
+    // 5. Skip websocket-related requests
     if (url.protocol === 'ws:' || url.protocol === 'wss:') return;
 
     // Strategy: Cache-first for static assets, network-first for HTML/CSV
@@ -74,14 +80,10 @@ self.addEventListener('fetch', (event) => {
     const isCSV = /\.csv$/i.test(url.pathname);
 
     if (isStaticAsset) {
-        // Cache-first: serve from cache, fall back to network
         event.respondWith(
             caches.match(request).then((cachedResponse) => {
-                if (cachedResponse) {
-                    return cachedResponse;
-                }
+                if (cachedResponse) return cachedResponse;
                 return fetch(request).then((response) => {
-                    // Cache a copy for later
                     if (response && response.status === 200) {
                         const responseClone = response.clone();
                         caches.open(RUNTIME_CACHE).then((cache) => {
@@ -90,13 +92,9 @@ self.addEventListener('fetch', (event) => {
                     }
                     return response;
                 });
-            }).catch(() => {
-                // Offline fallback
-                return caches.match('./index.html');
-            })
+            }).catch(() => caches.match('./index.html'))
         );
     } else if (isDocument || isCSV) {
-        // Network-first: get fresh data, fall back to cache
         event.respondWith(
             fetch(request).then((response) => {
                 if (response && response.status === 200) {
@@ -114,33 +112,33 @@ self.addEventListener('fetch', (event) => {
             })
         );
     } else {
-        // Default: network with cache fallback
         event.respondWith(
             fetch(request).catch(() => caches.match(request))
         );
     }
 });
 
-// ============================================================
-// OFFLINE GAME CACHING MESSAGE HANDLER
-// ============================================================
+// Message handler for offline caching
 self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+    
     if (event.data && event.data.type === 'CACHE_GAME') {
         const gameUrl = event.data.url;
+        if (!gameUrl) return; // Don't crash on empty URLs
+
         console.log('[SW] Pre-caching game for offline use:', gameUrl);
 
         event.waitUntil(
             caches.open(RUNTIME_CACHE).then(async (cache) => {
                 try {
-                    // 1. Fetch the main HTML file
                     const response = await fetch(gameUrl, { cache: 'no-store' });
                     if (!response.ok) throw new Error('Failed to fetch game file');
                     
-                    // 2. Cache the main HTML file
                     const responseClone = response.clone();
                     await cache.put(gameUrl, responseClone);
 
-                    // 3. Parse the HTML for linked JS/WASM assets
                     const html = await response.text();
                     const assetRegex = /(src|href)=["']([^"']+\.(js|wasm))["']/g;
                     let match;
@@ -148,33 +146,21 @@ self.addEventListener('message', (event) => {
 
                     while ((match = assetRegex.exec(html)) !== null) {
                         let assetUrl = match[2];
-                        // Ignore absolute URLs (external CDNs)
                         if (!assetUrl.startsWith('http') && !assetUrl.startsWith('//')) {
-                            // Resolve relative paths to absolute URLs
                             const baseUrl = new URL(gameUrl, self.location.origin).href;
                             assetUrl = new URL(assetUrl, baseUrl).href;
                             urlsToCache.push(assetUrl);
                         }
                     }
 
-                    // 4. Fetch and cache each asset
                     await Promise.all(urlsToCache.map(async (url) => {
                         try {
                             const assetRes = await fetch(url, { mode: 'no-cors' });
-                            if (assetRes) {
-                                await cache.put(url, assetRes);
-                                console.log('[SW] Cached asset:', url);
-                            }
-                        } catch (e) {
-                            console.warn('[SW] Failed to cache asset:', url, e);
-                        }
+                            if (assetRes) await cache.put(url, assetRes);
+                        } catch (e) {}
                     }));
 
-                    console.log('[SW] Successfully cached game:', gameUrl);
-                    
-                    // Notify the client that caching is complete
                     event.source.postMessage({ type: 'CACHE_COMPLETE', url: gameUrl });
-
                 } catch (err) {
                     console.error('[SW] Failed to cache game:', err);
                     event.source.postMessage({ type: 'CACHE_FAILED', url: gameUrl });
